@@ -5,6 +5,7 @@ import { useAssistant } from '@/hooks/useAssistant';
 import { useMessage } from '@/hooks/useMessage';
 import { Button, Input, Paper, Textarea } from '@mantine/core';
 import classNames from 'classnames';
+import Ellipses from '@/components/ellipses';
 
 const ASSISTANT_OPTIONS: AIAssistantCreateOptionsWithSystemPrompt = {
   initialPrompts: [
@@ -46,7 +47,7 @@ function App() {
 
   const getExplanation = useCallback((prompt: string) => {
     setPendingPrompt(prompt)
-  }, [setPendingPrompt])
+  }, [])
 
   // Handle context menu click
   useEffect(() => {
@@ -64,7 +65,9 @@ function App() {
 
   // AI prompt
   useEffect(() => {
+    if (!pendingPrompt) return
     if (!assistant) return
+
     setConversation(prev => [...prev, { role: "user", content: pendingPrompt, isPending: false, id: Date.now() }])
     setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, id: Date.now() }])
 
@@ -79,6 +82,7 @@ function App() {
             id: Date.now()
           }
         ])
+        setInput("")
       })
   }, [pendingPrompt, assistant])
 
@@ -111,7 +115,7 @@ function App() {
                 p="xs"
                 bg={message.role === "user" ? "cyan" : ""}
               >
-                {message.isPending ? "..." : null}
+                {message.isPending ? <Ellipses /> : null}
               </Paper>
             </div>
           ))
