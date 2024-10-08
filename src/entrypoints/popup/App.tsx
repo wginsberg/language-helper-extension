@@ -50,7 +50,6 @@ function App() {
   const scrollableAreaRef = useRef<HTMLDivElement>(null)
 
   const getExplanation = useCallback(async (q: string) => {
-    setOutput("")
     setConversation(prev => [...prev, { role: "user", content: q, isPending: false, timestamp: Date.now() }])
     setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, timestamp: Date.now() }])
 
@@ -70,7 +69,6 @@ function App() {
 
     let lastChunk
     for await (const chunk of streamResponse) {
-      setOutput(chunk)
       lastChunk = chunk
     }
 
@@ -79,7 +77,6 @@ function App() {
   }, [assistant])
 
   const [input, setInput] = useState("")
-  const [output, setOutput] = useState("")
 
   useEffect(() => {
     const selectionText = contextMenuMessage?.selectionText || ""
