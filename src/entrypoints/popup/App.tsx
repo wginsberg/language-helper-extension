@@ -31,53 +31,24 @@ const ASSISTANT_OPTIONS: AIAssistantCreateOptionsWithSystemPrompt = {
   ],
 }
 
-interface AssistantChatMessage extends AIAssistantAssistantPrompt {
-  isPending: boolean
+type ChatMessage = AIAssistantPrompt & {
   id: number
+  isPending?: boolean
 }
-
-interface UserChatMessage extends AIAssistantUserPrompt {
-  isPending: boolean
-  id: number
-}
-
-type ChatMessage = AssistantChatMessage | UserChatMessage
 
 function App() {
   const assistant = useAssistant(ASSISTANT_OPTIONS)
   const contextMenuMessage = useMessage("chrome-ai-context-menu")
+  const [input, setInput] = useState("")
   const [conversation, setConversation] = useState<(ChatMessage)[]>([])
+  const [pendingPrompt, setPendingPrompt] = useState("")
   const scrollableAreaRef = useRef<HTMLDivElement>(null)
 
-  const getExplanation = useCallback(async (q: string) => {
-    setConversation(prev => [...prev, { role: "user", content: q, isPending: false, id: Date.now() }])
-    setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, id: Date.now() }])
+  const getExplanation = useCallback((prompt: string) => {
+    setPendingPrompt(prompt)
+  }, [setPendingPrompt])
 
-    if (!assistant) {
-      let waitTime = 0
-      while (!assistant && waitTime < 10000) {
-        await new Promise(res => setTimeout(res, 100))
-        waitTime += 100
-      }
-      if (!assistant) {
-        alert("Timed out waiting for ai assistant. Please try again.")
-        return
-      }
-    }
-
-    const streamResponse = assistant.promptStreaming(q)
-
-    let lastChunk
-    for await (const chunk of streamResponse) {
-      lastChunk = chunk
-    }
-
-    if (!lastChunk) return
-    setConversation(prev => [...prev.filter(message => !message.isPending), { role: "assistant", content: lastChunk, id: Date.now(), isPending: false }])
-  }, [assistant])
-
-  const [input, setInput] = useState("")
-
+  // Handle context menu click
   useEffect(() => {
     const selectionText = contextMenuMessage?.selectionText || ""
     if (!selectionText) return
@@ -85,10 +56,31 @@ function App() {
     getExplanation(selectionText)
   }, [contextMenuMessage])
 
+  // Scroll to bottom on new message
   useEffect(() => {
     if (!scrollableAreaRef.current) return
     scrollableAreaRef.current.scrollTo({ top: scrollableAreaRef.current.scrollHeight, behavior: "smooth" })
   }, [conversation])
+
+  // AI prompt
+  useEffect(() => {
+    if (!assistant) return
+    setConversation(prev => [...prev, { role: "user", content: pendingPrompt, isPending: false, id: Date.now() }])
+    setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, id: Date.now() }])
+
+    // TODO streaming
+    assistant.prompt(pendingPrompt)
+      .then(result => {
+        setConversation(prev => [
+          ...prev.filter(message => !message.isPending),
+          {
+            role: "assistant",
+            content: result,
+            id: Date.now()
+          }
+        ])
+      })
+  }, [pendingPrompt, assistant])
 
   return (
     <div className='m-4'>
