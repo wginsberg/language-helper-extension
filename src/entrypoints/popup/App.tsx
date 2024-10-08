@@ -3,7 +3,7 @@ import reactLogo from '@/assets/react.svg';
 import wxtLogo from '/wxt.svg';
 import { useAssistant } from '@/hooks/useAssistant';
 import { useMessage } from '@/hooks/useMessage';
-import { Button, Input, Paper, Textarea } from '@mantine/core';
+import { Button, Input, Paper, Textarea, Transition } from '@mantine/core';
 import classNames from 'classnames';
 import Ellipses from '@/components/ellipses';
 
@@ -28,6 +28,15 @@ const ASSISTANT_OPTIONS: AIAssistantCreateOptionsWithSystemPrompt = {
       role: "assistant",
       // TODO - don't do formatting with html
       content: `<p><strong>frontera</strong>: border. <em>Feminine noun</em></p>`
+    },
+    {
+      role: "user",
+      content: `chévere`
+    },
+    {
+      role: "assistant",
+      // TODO - don't do formatting with html
+      content: `<p><strong>chévere</strong>: great. <em>Adjective</em></p> (colloquial) (extremely good) (Latin America)`
     }
   ],
 }
@@ -86,6 +95,25 @@ function App() {
       })
   }, [pendingPrompt, assistant])
 
+  // Language detection of input
+  const detectedLanguage = input.startsWith("!en")
+    ? "en"
+    : input.startsWith("!es")
+      ? "es"
+      : undefined
+
+  const getTranslation = useCallback((targetLanguage: string) => {
+    const formattedTarget = targetLanguage === "en"
+      ? "English"
+      : "Spanish"
+
+    // TODO - remove once automatic language detection works
+    const formattedInput = input.replace(/\!e\w/, "")
+
+    // TODO - change to translation API when it works
+    getExplanation(`Translate "${formattedInput}" to ${formattedTarget}`)
+  }, [input])
+
   return (
     <div className='m-4'>
       <div
@@ -126,7 +154,29 @@ function App() {
         className='mt-4'
       >
         <Input onChange={e => setInput(e.target.value)} value={input} placeholder='Define something else...' />
-        <Button className='mt-2'>Chat</Button>
+        <div className='relative mt-2'>
+          <Button>Chat</Button>
+          <div className='absolute right-0 top-0'>
+            <Transition mounted={detectedLanguage === "en"}>
+              {
+                styles =>
+                  <Button style={styles} color="green" onClick={() => getTranslation("es")}>
+                    Translate to Spanish
+                  </Button>
+              }
+            </Transition>
+          </div>
+          <div className='absolute right-0 top-0'>
+            <Transition mounted={detectedLanguage === "es"}>
+              {
+                styles =>
+                  <Button style={styles} color="green" onClick={() => getTranslation("es")}>
+                    Translate to English
+                  </Button>
+              }
+            </Transition>
+          </div>
+        </div>
       </form>
     </div>
   );
