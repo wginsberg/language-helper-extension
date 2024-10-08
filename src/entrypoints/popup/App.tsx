@@ -33,12 +33,12 @@ const ASSISTANT_OPTIONS: AIAssistantCreateOptionsWithSystemPrompt = {
 
 interface AssistantChatMessage extends AIAssistantAssistantPrompt {
   isPending: boolean
-  timestamp: number
+  id: number
 }
 
 interface UserChatMessage extends AIAssistantUserPrompt {
   isPending: boolean
-  timestamp: number
+  id: number
 }
 
 type ChatMessage = AssistantChatMessage | UserChatMessage
@@ -50,8 +50,8 @@ function App() {
   const scrollableAreaRef = useRef<HTMLDivElement>(null)
 
   const getExplanation = useCallback(async (q: string) => {
-    setConversation(prev => [...prev, { role: "user", content: q, isPending: false, timestamp: Date.now() }])
-    setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, timestamp: Date.now() }])
+    setConversation(prev => [...prev, { role: "user", content: q, isPending: false, id: Date.now() }])
+    setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, id: Date.now() }])
 
     if (!assistant) {
       let waitTime = 0
@@ -73,7 +73,7 @@ function App() {
     }
 
     if (!lastChunk) return
-    setConversation(prev => [...prev.filter(message => !message.isPending), { role: "assistant", content: lastChunk, timestamp: Date.now(), isPending: false }])
+    setConversation(prev => [...prev.filter(message => !message.isPending), { role: "assistant", content: lastChunk, id: Date.now(), isPending: false }])
   }, [assistant])
 
   const [input, setInput] = useState("")
@@ -99,7 +99,7 @@ function App() {
         {
           conversation.map((message, i) => (
             <div
-              key={`${message.role}-${message.timestamp}`}
+              key={`${message.role}-${message.id}`}
               className={classNames(
                 "inline w-max-4/5",
                 {
