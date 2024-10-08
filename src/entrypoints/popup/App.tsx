@@ -31,25 +31,32 @@ const ASSISTANT_OPTIONS: AIAssistantCreateOptionsWithSystemPrompt = {
   ],
 }
 
-interface PendingPrompt extends AIAssistantAssistantPrompt {
-  isPending: true
+interface AssistantChatMessage extends AIAssistantAssistantPrompt {
+  isPending: boolean
+  timestamp: number
 }
+
+interface UserChatMessage extends AIAssistantUserPrompt {
+  isPending: boolean
+  timestamp: number
+}
+
+type ChatMessage = AssistantChatMessage | UserChatMessage
 
 function App() {
   const assistant = useAssistant(ASSISTANT_OPTIONS)
   const contextMenuMessage = useMessage("chrome-ai-context-menu")
-  // const [conversation, setConversation] = useState<(AIAssistantAssistantPrompt | AIAssistantUserPrompt)[]>(ASSISTANT_OPTIONS.initialPrompts || [])
-  const [conversation, setConversation] = useState<(AIAssistantAssistantPrompt | AIAssistantUserPrompt | PendingPrompt)[]>([])
+  const [conversation, setConversation] = useState<(ChatMessage)[]>([])
   const scrollableAreaRef = useRef<HTMLDivElement>(null)
 
   const getExplanation = useCallback(async (q: string) => {
     setOutput("")
-    setConversation(prev => [...prev, { role: "user", content: q }])
-    setConversation(prev => [...prev, { role: "assistant", isPending: true, content: "" }])
+    setConversation(prev => [...prev, { role: "user", content: q, isPending: false, timestamp: Date.now() }])
+    setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, timestamp: Date.now() }])
 
     if (!assistant) {
       let waitTime = 0
-      while (!assistant && waitTime < 3000) {
+      while (!assistant && waitTime < 10000) {
         await new Promise(res => setTimeout(res, 100))
         waitTime += 100
       }
@@ -68,7 +75,7 @@ function App() {
     }
 
     if (!lastChunk) return
-    setConversation(prev => [...prev.filter(message => !(message as PendingPrompt).isPending), { role: "assistant", content: lastChunk }])
+    setConversation(prev => [...prev.filter(message => !message.isPending), { role: "assistant", content: lastChunk, timestamp: Date.now(), isPending: false }])
   }, [assistant])
 
   const [input, setInput] = useState("")
@@ -86,8 +93,6 @@ function App() {
     scrollableAreaRef.current.scrollTo({ top: scrollableAreaRef.current.scrollHeight, behavior: "smooth" })
   }, [conversation])
 
-  const formattedOutput = output.split(/\*\*\*.*?\*\*\*/)
-
   return (
     <div className='m-4'>
       <div
@@ -97,7 +102,7 @@ function App() {
         {
           conversation.map((message, i) => (
             <div
-              key={`${message.role}-${message.content}`}
+              key={`${message.role}-${message.timestamp}`}
               className={classNames(
                 "inline w-max-4/5",
                 {
@@ -109,7 +114,7 @@ function App() {
             >
               <Paper
                 dangerouslySetInnerHTML={
-                  ((message) as PendingPrompt).isPending
+                  message.isPending
                     ? undefined
                     : { __html: message.content || "" }
                 }
@@ -117,7 +122,7 @@ function App() {
                 p="xs"
                 bg={message.role === "user" ? "cyan" : ""}
               >
-                {((message) as PendingPrompt).isPending && "..."}
+                {message.isPending ? "..." : null}
               </Paper>
             </div>
           ))
