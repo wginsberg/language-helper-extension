@@ -6,6 +6,7 @@ export default defineConfig({
   srcDir: "src",
   outDir: "build",
   manifest: {
-    permissions: ["contextMenus"]
+    permissions: ["contextMenus"],
+    name: "AI Spanish Helper"
   }
 });

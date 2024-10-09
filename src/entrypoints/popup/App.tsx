@@ -119,6 +119,8 @@ function App() {
   if (!isSupportedBroswer) {
     return (
       <div className='m-4'>
+        <Title order={1}>AI Spanish Helper</Title>
+        <Space h={4} />
         <Alert color="red" title="Unsupported browser">
           Looks like the browser you are using does not support this browser extension.
         </Alert>
@@ -128,6 +130,8 @@ function App() {
 
   return (
     <div className='m-4'>
+      <Title order={1} size="md">AI Spanish Helper</Title>
+      <Space h={8} />
       <div
         ref={scrollableAreaRef}
         className='flex flex-col gap-4 min-h-32 max-h-96 overflow-scroll border-2 border-black p-2 rounded'
@@ -174,7 +178,7 @@ function App() {
         <Input
           onChange={e => setInput(e.target.value)}
           value={input}
-          placeholder='Define something else...'
+          placeholder={`Ask something${conversation.length > 0 ? " else" : ""}...`}
           disabled={!assistant}
         />
         <div className='relative mt-2'>

@@ -30,7 +30,7 @@ export default defineBackground(() => {
 
   browser.contextMenus.create({
     id: "chrome-ai",
-    title: "Explain in English",
+    title: "Explain with AI Spanish Helper",
     contexts: ["selection"],
   }, () => {
     console.log("register")
