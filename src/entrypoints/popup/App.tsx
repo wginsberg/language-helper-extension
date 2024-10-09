@@ -170,7 +170,7 @@ function App() {
             <Transition mounted={detectedLanguage === "es"}>
               {
                 styles =>
-                  <Button style={styles} color="green" onClick={() => getTranslation("es")}>
+                  <Button style={styles} color="green" onClick={() => getTranslation("en")}>
                     Translate to English
                   </Button>
               }
