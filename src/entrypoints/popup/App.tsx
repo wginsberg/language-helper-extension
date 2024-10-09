@@ -69,7 +69,7 @@ function App() {
   // Scroll to bottom on new message
   useEffect(() => {
     if (!scrollableAreaRef.current) return
-    scrollableAreaRef.current.scrollTo({ top: scrollableAreaRef.current.scrollHeight, behavior: "smooth" })
+    scrollableAreaRef.current.lastElementChild?.scrollIntoView({ behavior: "smooth" })
   }, [conversation])
 
   // AI prompt
