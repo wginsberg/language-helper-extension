@@ -1,9 +1,7 @@
 import { useState } from 'react';
-import reactLogo from '@/assets/react.svg';
-import wxtLogo from '/wxt.svg';
 import { useAssistant } from '@/hooks/useAssistant';
 import { useMessage } from '@/hooks/useMessage';
-import { Alert, Button, Input, Loader, LoadingOverlay, Paper, Space, Textarea, Title, Transition } from '@mantine/core';
+import { Alert, Button, Input, Loader, Paper, Space, Title, Transition } from '@mantine/core';
 import classNames from 'classnames';
 import Ellipses from '@/components/ellipses';
 
@@ -47,7 +45,7 @@ type ChatMessage = AIAssistantPrompt & {
 }
 
 function App() {
-  const { assistant, assistantCapabilities, isSupportedBroswer } = useAssistant(ASSISTANT_OPTIONS)
+  const { assistant, isSupportedBroswer } = useAssistant(ASSISTANT_OPTIONS)
   const contextMenuMessage = useMessage("chrome-ai-context-menu")
   const [input, setInput] = useState("")
   const [conversation, setConversation] = useState<(ChatMessage)[]>([])
@@ -110,7 +108,7 @@ function App() {
       : "Spanish"
 
     // TODO - remove once automatic language detection works
-    const formattedInput = input.replace(/\!e\w/, "")
+    const formattedInput = input.replace(/!e\w/, "")
 
     // TODO - change to translation API when it works
     getExplanation(`Translate "${formattedInput}" to ${formattedTarget}`)
@@ -143,7 +141,7 @@ function App() {
           </div>
         }
         {
-          conversation.map((message, i) => (
+          conversation.map((message) => (
             <div
               key={`${message.role}-${message.id}`}
               className={classNames(
