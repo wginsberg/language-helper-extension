@@ -80,6 +80,8 @@ function App() {
     setConversation(prev => [...prev, { role: "user", content: pendingPrompt, isPending: false, id: Date.now() }])
     setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, id: Date.now() }])
 
+    setPendingPrompt("")
+
     // TODO streaming
     assistant.prompt(pendingPrompt)
       .then(result => {
