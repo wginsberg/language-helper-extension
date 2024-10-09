@@ -3,7 +3,7 @@ import reactLogo from '@/assets/react.svg';
 import wxtLogo from '/wxt.svg';
 import { useAssistant } from '@/hooks/useAssistant';
 import { useMessage } from '@/hooks/useMessage';
-import { Button, Input, Paper, Textarea, Transition } from '@mantine/core';
+import { Button, Input, Loader, LoadingOverlay, Paper, Textarea, Transition } from '@mantine/core';
 import classNames from 'classnames';
 import Ellipses from '@/components/ellipses';
 
@@ -47,7 +47,7 @@ type ChatMessage = AIAssistantPrompt & {
 }
 
 function App() {
-  const assistant = useAssistant(ASSISTANT_OPTIONS)
+  const { assistant, assistantCapabilities } = useAssistant(ASSISTANT_OPTIONS)
   const contextMenuMessage = useMessage("chrome-ai-context-menu")
   const [input, setInput] = useState("")
   const [conversation, setConversation] = useState<(ChatMessage)[]>([])
@@ -121,6 +121,12 @@ function App() {
         className='flex flex-col gap-4 min-h-32 max-h-96 overflow-scroll border-2 border-black p-2 rounded'
       >
         {
+          !assistant &&
+          <div className='flex justify-center items-center grow'>
+            <Loader />
+          </div>
+        }
+        {
           conversation.map((message, i) => (
             <div
               key={`${message.role}-${message.id}`}
@@ -153,9 +159,16 @@ function App() {
         onSubmit={e => { e.preventDefault(); getExplanation(input); }}
         className='mt-4'
       >
-        <Input onChange={e => setInput(e.target.value)} value={input} placeholder='Define something else...' />
+        <Input
+          onChange={e => setInput(e.target.value)}
+          value={input}
+          placeholder='Define something else...'
+          disabled={!assistant}
+        />
         <div className='relative mt-2'>
-          <Button>Chat</Button>
+          <Button disabled={!assistant}>
+            Chat
+          </Button>
           <div className='absolute right-0 top-0'>
             <Transition mounted={detectedLanguage === "en"}>
               {
