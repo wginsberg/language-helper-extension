@@ -3,7 +3,7 @@ import reactLogo from '@/assets/react.svg';
 import wxtLogo from '/wxt.svg';
 import { useAssistant } from '@/hooks/useAssistant';
 import { useMessage } from '@/hooks/useMessage';
-import { Button, Input, Loader, LoadingOverlay, Paper, Textarea, Transition } from '@mantine/core';
+import { Alert, Button, Input, Loader, LoadingOverlay, Paper, Space, Textarea, Title, Transition } from '@mantine/core';
 import classNames from 'classnames';
 import Ellipses from '@/components/ellipses';
 
@@ -47,7 +47,7 @@ type ChatMessage = AIAssistantPrompt & {
 }
 
 function App() {
-  const { assistant, assistantCapabilities } = useAssistant(ASSISTANT_OPTIONS)
+  const { assistant, assistantCapabilities, isSupportedBroswer } = useAssistant(ASSISTANT_OPTIONS)
   const contextMenuMessage = useMessage("chrome-ai-context-menu")
   const [input, setInput] = useState("")
   const [conversation, setConversation] = useState<(ChatMessage)[]>([])
@@ -115,6 +115,16 @@ function App() {
     // TODO - change to translation API when it works
     getExplanation(`Translate "${formattedInput}" to ${formattedTarget}`)
   }, [input])
+
+  if (!isSupportedBroswer) {
+    return (
+      <div className='m-4'>
+        <Alert color="red" title="Unsupported browser">
+          Looks like the browser you are using does not support this browser extension.
+        </Alert>
+      </div>
+    )
+  }
 
   return (
     <div className='m-4'>
