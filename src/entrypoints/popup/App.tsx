@@ -35,7 +35,16 @@ const ASSISTANT_OPTIONS: AILanguageModelCreateOptionsWithSystemPrompt = {
       role: "assistant",
       // TODO - don't do formatting with html
       content: `<p><strong>chévere</strong>: great. <em>Adjective</em></p> (colloquial) (extremely good) (Latin America)`
-    }
+    },
+    {
+      role: "user",
+      content: `"tienen" from the sentence "Todas las actividades económicas del sector tienen su fundamento en la explotación de los recursos que la tierra origina, favorecida por la acción del ser humano: alimentos vegetales como cereales, frutas, hortalizas, pastos cultivados y forrajes; fibras utilizadas por la industria textil; cultivos energéticos etc."`
+    },
+    {
+      role: "assistant",
+      // TODO - don't do formatting with html
+      content: `<strong>tienen</strong>: they have, you have (formal). <em>Present tense third person plural conjugation of tener.</em>`
+    },
   ],
 }
 
@@ -45,7 +54,7 @@ type ChatMessage = AILanguageModelPrompt & {
 }
 
 function App() {
-  const { assistant, isSupportedBroswer } = useAssistant(ASSISTANT_OPTIONS)
+  const { assistant } = useAssistant(ASSISTANT_OPTIONS)
   const contextMenuMessage = useMessage("chrome-ai-context-menu")
   const [input, setInput] = useState("")
   const [conversation, setConversation] = useState<(ChatMessage)[]>([])
@@ -113,18 +122,6 @@ function App() {
     // TODO - change to translation API when it works
     getExplanation(`Translate "${formattedInput}" to ${formattedTarget}`)
   }, [input])
-
-  if (!isSupportedBroswer) {
-    return (
-      <div className='m-4'>
-        <Title order={1}>AI Spanish Helper</Title>
-        <Space h={4} />
-        <Alert color="red" title="Unsupported browser">
-          Looks like the browser you are using does not support this browser extension.
-        </Alert>
-      </div>
-    )
-  }
 
   return (
     <div className='m-4'>

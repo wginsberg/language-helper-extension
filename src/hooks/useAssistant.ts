@@ -3,41 +3,26 @@ export function useAssistant(
         | AILanguageModelCreateOptionsWithSystemPrompt
         | AILanguageModelCreateOptionsWithoutSystemPrompt,
 ) {
-    const [assistant, setAssistant] = useState<AILanguageModel>();
-    const [assistantCapabilities, setAssistantCapabilities] = useState<
-        AILanguageModelCapabilities
-    >();
-    const isSupportedBroswer = "ai" in window;
-
-    useEffect(() => {
-        if (!isSupportedBroswer) return;
-
-        window.ai.languageModel.capabilities()
-            .then(async (initialCapabilities) => {
-                setAssistantCapabilities(initialCapabilities);
-
-                if (initialCapabilities.available === "no") {
-                    return;
-                }
-
-                let updatedCapabilities = initialCapabilities;
-                while (updatedCapabilities.available === "after-download") {
-                    await new Promise((res) => setTimeout(res, 100));
-                    updatedCapabilities = await window.ai.languageModel
-                        .capabilities();
-                }
-                setAssistantCapabilities(updatedCapabilities);
-
-                if (updatedCapabilities.available !== "readily") return;
-
-                window.ai.languageModel.create(options)
-                    .then(setAssistant);
+    const [history, setHistory] = useState(options?.initialPrompts);
+    const assistant = {
+        prompt: async (prompt: string) => {
+            const response = await fetch("http://localhost:3000/api/chat", {
+                method: "POST",
+                body: JSON.stringify({
+                    prompt,
+                    history,
+                }),
+                headers: {
+                    "Content-type": "application/json",
+                },
             });
-    }, [options]);
+            const json = await response.json();
+            setHistory(json.history);
+            return json.text;
+        },
+    };
 
     return {
         assistant,
-        assistantCapabilities,
-        isSupportedBroswer,
     };
 }
