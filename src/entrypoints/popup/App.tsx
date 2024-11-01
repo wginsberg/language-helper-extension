@@ -1,9 +1,10 @@
 import { useState } from 'react';
 import { useAssistant } from '@/hooks/useAssistant';
 import { useMessage } from '@/hooks/useMessage';
-import { Alert, Button, Input, Loader, Paper, Space, Title, Transition } from '@mantine/core';
+import { Button, Input, Loader, Paper, Space, Title, Tooltip } from '@mantine/core';
 import classNames from 'classnames';
 import Ellipses from '@/components/ellipses';
+import Markdown from 'react-markdown';
 
 const ASSISTANT_OPTIONS: AILanguageModelCreateOptionsWithSystemPrompt = {
   initialPrompts: [
@@ -14,9 +15,7 @@ const ASSISTANT_OPTIONS: AILanguageModelCreateOptionsWithSystemPrompt = {
     {
       role: "assistant",
       // TODO - don't do formatting with html
-      content: `<p><strong>sabía</strong> I was knowing: Imperfect yo conjugation of saber.</p>
-<p><strong>sabía</strong> he/she was knowing, you were knowing: Imperfect él/ella/usted conjugation of saber.</p>
-<p><strong>sabia</strong> wise Feminine singular of sabio</p>`
+      content: `**sabía (saber)**: I knew, he/she/you (formal) knew. _Past tense conjugation of saber_.`
     },
     {
       role: "user",
@@ -25,7 +24,7 @@ const ASSISTANT_OPTIONS: AILanguageModelCreateOptionsWithSystemPrompt = {
     {
       role: "assistant",
       // TODO - don't do formatting with html
-      content: `<p><strong>frontera</strong>: border. <em>Feminine noun</em></p>`
+      content: `**frontera**: border. _Feminine noun_`
     },
     {
       role: "user",
@@ -34,7 +33,7 @@ const ASSISTANT_OPTIONS: AILanguageModelCreateOptionsWithSystemPrompt = {
     {
       role: "assistant",
       // TODO - don't do formatting with html
-      content: `<p><strong>chévere</strong>: great. <em>Adjective</em></p> (colloquial) (extremely good) (Latin America)`
+      content: `**chévere**: great. _Adjective_\n(colloquial) (extremely good) (Latin America)`
     },
     {
       role: "user",
@@ -43,7 +42,7 @@ const ASSISTANT_OPTIONS: AILanguageModelCreateOptionsWithSystemPrompt = {
     {
       role: "assistant",
       // TODO - don't do formatting with html
-      content: `<strong>tienen</strong>: they have, you have (formal). <em>Present tense third person plural conjugation of tener.</em>`
+      content: `**tienen (tener)**: they have, you have (formal). _Present tense third person plural conjugation of tener_.`
     },
   ],
 }
@@ -51,6 +50,7 @@ const ASSISTANT_OPTIONS: AILanguageModelCreateOptionsWithSystemPrompt = {
 type ChatMessage = AILanguageModelPrompt & {
   id: number
   isPending?: boolean
+  shortContent?: string
 }
 
 function App() {
@@ -58,19 +58,29 @@ function App() {
   const contextMenuMessage = useMessage("chrome-ai-context-menu")
   const [input, setInput] = useState("")
   const [conversation, setConversation] = useState<(ChatMessage)[]>([])
-  const [pendingPrompt, setPendingPrompt] = useState("")
+  const [pendingPrompt, setPendingPrompt] = useState<{ prompt: string, shortPrompt?: string }>()
   const scrollableAreaRef = useRef<HTMLDivElement>(null)
 
-  const getExplanation = useCallback((prompt: string) => {
-    setPendingPrompt(prompt)
+  const getExplanation = useCallback((prompt: string, shortPrompt?: string) => {
+    setPendingPrompt({ prompt, shortPrompt })
   }, [])
 
   // Handle context menu click
   useEffect(() => {
     const selectionText = contextMenuMessage?.selectionText || ""
+    const surroundingText = contextMenuMessage?.surroundingText || ""
     if (!selectionText) return
+
+    const prompt = surroundingText && surroundingText !== selectionText
+      ? `"${selectionText}" in the context "${surroundingText}"`
+      : selectionText
+    
+    const shortPrompt = surroundingText && surroundingText !== selectionText
+        ? selectionText
+        : undefined
+
     setConversation([])
-    getExplanation(selectionText)
+    setPendingPrompt({ prompt, shortPrompt })
   }, [contextMenuMessage])
 
   // Scroll to bottom on new message
@@ -84,13 +94,13 @@ function App() {
     if (!pendingPrompt) return
     if (!assistant) return
 
-    setConversation(prev => [...prev, { role: "user", content: pendingPrompt, isPending: false, id: Date.now() }])
+    setConversation(prev => [...prev, { role: "user", content: pendingPrompt.prompt, shortContent: pendingPrompt.shortPrompt, isPending: false, id: Date.now() }])
     setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, id: Date.now() }])
 
-    setPendingPrompt("")
+    setPendingPrompt(undefined)
 
     // TODO streaming
-    assistant.prompt(pendingPrompt)
+    assistant.prompt(pendingPrompt.prompt)
       .then(result => {
         setConversation(prev => [
           ...prev.filter(message => !message.isPending),
@@ -103,25 +113,6 @@ function App() {
         setInput("")
       })
   }, [pendingPrompt, assistant])
-
-  // Language detection of input
-  const detectedLanguage = input.startsWith("!en")
-    ? "en"
-    : input.startsWith("!es")
-      ? "es"
-      : undefined
-
-  const getTranslation = useCallback((targetLanguage: string) => {
-    const formattedTarget = targetLanguage === "en"
-      ? "English"
-      : "Spanish"
-
-    // TODO - remove once automatic language detection works
-    const formattedInput = input.replace(/!e\w/, "")
-
-    // TODO - change to translation API when it works
-    getExplanation(`Translate "${formattedInput}" to ${formattedTarget}`)
-  }, [input])
 
   return (
     <div className='m-4'>
@@ -150,18 +141,23 @@ function App() {
                 }
               )}
             >
-              <Paper
-                dangerouslySetInnerHTML={
-                  message.isPending
-                    ? undefined
-                    : { __html: message.content || "" }
-                }
-                withBorder
-                p="xs"
-                bg={message.role === "user" ? "cyan" : ""}
+              <Tooltip
+                hidden={!message.shortContent}
+                label={message.shortContent ? message.content : null}
+                multiline
+                w={220}
               >
-                {message.isPending ? <Ellipses /> : null}
-              </Paper>
+                <Paper
+                  withBorder
+                  p="xs"
+                  bg={message.role === "user" ? "cyan" : ""}
+                >
+                  <Markdown>
+                    {message.shortContent || message.content}
+                  </Markdown>
+                  {message.isPending ? <Ellipses /> : null}
+                </Paper>
+              </Tooltip>
             </div>
           ))
         }
@@ -180,26 +176,6 @@ function App() {
           <Button disabled={!assistant}>
             Chat
           </Button>
-          <div className='absolute right-0 top-0'>
-            <Transition mounted={detectedLanguage === "en"}>
-              {
-                styles =>
-                  <Button style={styles} color="green" onClick={() => getTranslation("es")}>
-                    Translate to Spanish
-                  </Button>
-              }
-            </Transition>
-          </div>
-          <div className='absolute right-0 top-0'>
-            <Transition mounted={detectedLanguage === "es"}>
-              {
-                styles =>
-                  <Button style={styles} color="green" onClick={() => getTranslation("en")}>
-                    Translate to English
-                  </Button>
-              }
-            </Transition>
-          </div>
         </div>
       </form>
     </div>
