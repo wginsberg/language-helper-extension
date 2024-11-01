@@ -1,37 +1,43 @@
-export function useAssistant(options?: AIAssistantCreateOptionsWithSystemPrompt | AIAssistantCreateOptionsWithoutSystemPrompt) {
-    const [assistant, setAssistant] = useState<AIAssistant>()
-    const [assistantCapabilities, setAssistantCapabilities] = useState<AIAssistantCapabilities>()
-    const isSupportedBroswer = "ai" in window
+export function useAssistant(
+    options?:
+        | AILanguageModelCreateOptionsWithSystemPrompt
+        | AILanguageModelCreateOptionsWithoutSystemPrompt,
+) {
+    const [assistant, setAssistant] = useState<AILanguageModel>();
+    const [assistantCapabilities, setAssistantCapabilities] = useState<
+        AILanguageModelCapabilities
+    >();
+    const isSupportedBroswer = "ai" in window;
 
     useEffect(() => {
-        if (!isSupportedBroswer) return
+        if (!isSupportedBroswer) return;
 
-        window.ai.assistant.capabilities()
-            .then(async initialCapabilities => {
-                setAssistantCapabilities(initialCapabilities)
+        window.ai.languageModel.capabilities()
+            .then(async (initialCapabilities) => {
+                setAssistantCapabilities(initialCapabilities);
 
                 if (initialCapabilities.available === "no") {
-                    return
+                    return;
                 }
 
-                let updatedCapabilities = initialCapabilities
+                let updatedCapabilities = initialCapabilities;
                 while (updatedCapabilities.available === "after-download") {
-                    await new Promise(res => setTimeout(res, 100))
-                    updatedCapabilities = await window.ai.assistant.capabilities()
+                    await new Promise((res) => setTimeout(res, 100));
+                    updatedCapabilities = await window.ai.languageModel
+                        .capabilities();
                 }
-                setAssistantCapabilities(updatedCapabilities)
+                setAssistantCapabilities(updatedCapabilities);
 
-                if (updatedCapabilities.available !== "readily") return
+                if (updatedCapabilities.available !== "readily") return;
 
-                window.ai.assistant.create(options)
-                    .then(setAssistant)
-            })
-    }, [options])
-
+                window.ai.languageModel.create(options)
+                    .then(setAssistant);
+            });
+    }, [options]);
 
     return {
         assistant,
         assistantCapabilities,
-        isSupportedBroswer
-    }
+        isSupportedBroswer,
+    };
 }

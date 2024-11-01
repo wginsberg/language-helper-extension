@@ -5,7 +5,7 @@ import { Alert, Button, Input, Loader, Paper, Space, Title, Transition } from '@
 import classNames from 'classnames';
 import Ellipses from '@/components/ellipses';
 
-const ASSISTANT_OPTIONS: AIAssistantCreateOptionsWithSystemPrompt = {
+const ASSISTANT_OPTIONS: AILanguageModelCreateOptionsWithSystemPrompt = {
   initialPrompts: [
     {
       role: "user",
@@ -39,7 +39,7 @@ const ASSISTANT_OPTIONS: AIAssistantCreateOptionsWithSystemPrompt = {
   ],
 }
 
-type ChatMessage = AIAssistantPrompt & {
+type ChatMessage = AILanguageModelPrompt & {
   id: number
   isPending?: boolean
 }
