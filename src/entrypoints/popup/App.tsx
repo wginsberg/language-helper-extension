@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { useAssistant } from '@/hooks/useAssistant';
 import { useMessage } from '@/hooks/useMessage';
-import { Button, Input, Loader, Paper, Space, Title, Tooltip } from '@mantine/core';
+import { Button, Input, Loader, Paper, Space, Title, Tooltip, Transition } from '@mantine/core';
 import classNames from 'classnames';
 import Ellipses from '@/components/ellipses';
 import Markdown from 'react-markdown';
@@ -117,55 +117,64 @@ function App() {
   return (
     <div className='m-4'>
       <Title order={1} size="md">AI Spanish Helper</Title>
-      <Space h={8} />
-      <div
-        ref={scrollableAreaRef}
-        className='flex flex-col gap-4 min-h-32 max-h-96 overflow-scroll border-2 border-black p-2 rounded'
-      >
+      <Transition
+        mounted={conversation.length > 0}
+        transition={contextMenuMessage ? undefined : "scale-y"}
+        duration={500}
+        >
         {
-          !assistant &&
-          <div className='flex justify-center items-center grow'>
-            <Loader />
+          styles =>
+          <div
+            ref={scrollableAreaRef}
+            className='flex flex-col gap-4 min-h-32 max-h-96 mt-1 overflow-scroll border-2 border-black p-2 rounded'
+            style={styles}
+          >
+            {
+              !assistant &&
+              <div className='flex justify-center items-center grow'>
+                <Loader />
+              </div>
+            }
+            {
+              conversation.map((message) => (
+                <div
+                key={`${message.role}-${message.id}`}
+                className={classNames(
+                  "inline w-max-4/5",
+                  {
+                    "self-start": message.role === "assistant",
+                    "self-end": message.role === "user",
+                    "text-end": message.role === "user"
+                  }
+                )}
+                >
+                  <Tooltip
+                    hidden={!message.shortContent}
+                    label={message.shortContent ? message.content : null}
+                    multiline
+                    w={220}
+                    >
+                    <Paper
+                      withBorder
+                      p="xs"
+                      bg={message.role === "user" ? "cyan" : ""}
+                      >
+                      <Markdown>
+                        {message.shortContent || message.content}
+                      </Markdown>
+                      {message.isPending ? <Ellipses /> : null}
+                    </Paper>
+                  </Tooltip>
+                </div>
+              ))
+            }
           </div>
         }
-        {
-          conversation.map((message) => (
-            <div
-              key={`${message.role}-${message.id}`}
-              className={classNames(
-                "inline w-max-4/5",
-                {
-                  "self-start": message.role === "assistant",
-                  "self-end": message.role === "user",
-                  "text-end": message.role === "user"
-                }
-              )}
-            >
-              <Tooltip
-                hidden={!message.shortContent}
-                label={message.shortContent ? message.content : null}
-                multiline
-                w={220}
-              >
-                <Paper
-                  withBorder
-                  p="xs"
-                  bg={message.role === "user" ? "cyan" : ""}
-                >
-                  <Markdown>
-                    {message.shortContent || message.content}
-                  </Markdown>
-                  {message.isPending ? <Ellipses /> : null}
-                </Paper>
-              </Tooltip>
-            </div>
-          ))
-        }
-      </div>
+      </Transition>
       <form
         onSubmit={e => { e.preventDefault(); getExplanation(input); }}
         className='mt-4'
-      >
+        >
         <Input
           onChange={e => setInput(e.target.value)}
           value={input}
