@@ -1,50 +1,46 @@
 import { useState } from 'react';
 import { useAssistant } from '@/hooks/useAssistant';
 import { useMessage } from '@/hooks/useMessage';
-import { Button, Input, Loader, Paper, Space, Title, Tooltip, Transition } from '@mantine/core';
+import { Button, Input, Loader, Paper, Title, Tooltip, Transition } from '@mantine/core';
 import classNames from 'classnames';
 import Ellipses from '@/components/ellipses';
 import Markdown from 'react-markdown';
 
-const ASSISTANT_OPTIONS: AILanguageModelCreateOptionsWithSystemPrompt = {
+const ASSISTANT_OPTIONS = {
   initialPrompts: [
     {
       role: "user",
-      content: `sabía`
+      parts: [{ text: `sabía` }]
     },
     {
-      role: "assistant",
-      // TODO - don't do formatting with html
-      content: `**sabía (saber)**: I knew, he/she/you (formal) knew. _Past tense conjugation of saber_.`
-    },
-    {
-      role: "user",
-      content: `frontera`
-    },
-    {
-      role: "assistant",
-      // TODO - don't do formatting with html
-      content: `**frontera**: border. _Feminine noun_`
+      role: "model",
+      parts: [{ text: `**sabía (saber)**: I knew, he/she/you (formal) knew. _Past tense conjugation of saber_.` }]
     },
     {
       role: "user",
-      content: `chévere`
+      parts: [{ text: `frontera` }]
     },
     {
-      role: "assistant",
-      // TODO - don't do formatting with html
-      content: `**chévere**: great. _Adjective_\n(colloquial) (extremely good) (Latin America)`
+      role: "model",
+      parts: [{ text: `**frontera**: border. _Feminine noun_` }]
     },
     {
       role: "user",
-      content: `"tienen" from the sentence "Todas las actividades económicas del sector tienen su fundamento en la explotación de los recursos que la tierra origina, favorecida por la acción del ser humano: alimentos vegetales como cereales, frutas, hortalizas, pastos cultivados y forrajes; fibras utilizadas por la industria textil; cultivos energéticos etc."`
+      parts: [{ text: `chévere` }]
     },
     {
-      role: "assistant",
-      // TODO - don't do formatting with html
-      content: `**tienen (tener)**: they have, you have (formal). _Present tense third person plural conjugation of tener_.`
+      role: "model",
+      parts: [{ text: `**chévere**: great. _Adjective_\n(colloquial) (extremely good) (Latin America)` }]
     },
-  ],
+    {
+      role: "user",
+      parts: [{ text: `"tienen" from the sentence "Todas las actividades económicas del sector tienen su fundamento en la explotación de los recursos que la tierra origina, favorecida por la acción del ser humano: alimentos vegetales como cereales, frutas, hortalizas, pastos cultivados y forrajes; fibras utilizadas por la industria textil; cultivos energéticos etc."` }]
+    },
+    {
+      role: "model",
+      parts: [{ text: `**tienen (tener)**: they have, you have (formal). _Present tense third person plural conjugation of tener_.` }]
+    },
+  ]
 }
 
 type ChatMessage = AILanguageModelPrompt & {
@@ -74,10 +70,10 @@ function App() {
     const prompt = surroundingText && surroundingText !== selectionText
       ? `"${selectionText}" in the context "${surroundingText}"`
       : selectionText
-    
+
     const shortPrompt = surroundingText && surroundingText !== selectionText
-        ? selectionText
-        : undefined
+      ? selectionText
+      : undefined
 
     setConversation([])
     setPendingPrompt({ prompt, shortPrompt })
@@ -121,60 +117,60 @@ function App() {
         mounted={conversation.length > 0}
         transition={contextMenuMessage ? undefined : "scale-y"}
         duration={500}
-        >
+      >
         {
           styles =>
-          <div
-            ref={scrollableAreaRef}
-            className='flex flex-col gap-4 min-h-32 max-h-96 mt-1 overflow-scroll border-2 border-black p-2 rounded'
-            style={styles}
-          >
-            {
-              !assistant &&
-              <div className='flex justify-center items-center grow'>
-                <Loader />
-              </div>
-            }
-            {
-              conversation.map((message) => (
-                <div
-                key={`${message.role}-${message.id}`}
-                className={classNames(
-                  "inline w-max-4/5",
-                  {
-                    "self-start": message.role === "assistant",
-                    "self-end": message.role === "user",
-                    "text-end": message.role === "user"
-                  }
-                )}
-                >
-                  <Tooltip
-                    hidden={!message.shortContent}
-                    label={message.shortContent ? message.content : null}
-                    multiline
-                    w={220}
-                    >
-                    <Paper
-                      withBorder
-                      p="xs"
-                      bg={message.role === "user" ? "cyan" : ""}
-                      >
-                      <Markdown>
-                        {message.shortContent || message.content}
-                      </Markdown>
-                      {message.isPending ? <Ellipses /> : null}
-                    </Paper>
-                  </Tooltip>
+            <div
+              ref={scrollableAreaRef}
+              className='flex flex-col gap-4 min-h-32 max-h-96 mt-1 overflow-scroll border-2 border-black p-2 rounded'
+              style={styles}
+            >
+              {
+                !assistant &&
+                <div className='flex justify-center items-center grow'>
+                  <Loader />
                 </div>
-              ))
-            }
-          </div>
+              }
+              {
+                conversation.map((message) => (
+                  <div
+                    key={`${message.role}-${message.id}`}
+                    className={classNames(
+                      "inline w-max-4/5",
+                      {
+                        "self-start": message.role === "assistant",
+                        "self-end": message.role === "user",
+                        "text-end": message.role === "user"
+                      }
+                    )}
+                  >
+                    <Tooltip
+                      hidden={!message.shortContent}
+                      label={message.shortContent ? message.content : null}
+                      multiline
+                      w={220}
+                    >
+                      <Paper
+                        withBorder
+                        p="xs"
+                        bg={message.role === "user" ? "cyan" : ""}
+                      >
+                        <Markdown>
+                          {message.shortContent || message.content}
+                        </Markdown>
+                        {message.isPending ? <Ellipses /> : null}
+                      </Paper>
+                    </Tooltip>
+                  </div>
+                ))
+              }
+            </div>
         }
       </Transition>
       <form
         onSubmit={e => { e.preventDefault(); getExplanation(input); }}
         className='mt-4'
-        >
+      >
         <Input
           onChange={e => setInput(e.target.value)}
           value={input}
