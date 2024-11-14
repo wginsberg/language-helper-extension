@@ -1,10 +1,12 @@
 import { useState } from 'react';
 import { useAssistant } from '@/hooks/useAssistant';
 import { useMessage } from '@/hooks/useMessage';
-import { Button, Input, Loader, Paper, Title, Tooltip, Transition } from '@mantine/core';
+import { Button, Input, Loader, NavLink, Paper, Title, Tooltip, Transition } from '@mantine/core';
+import { notifications } from "@mantine/notifications"
 import classNames from 'classnames';
 import Ellipses from '@/components/ellipses';
 import Markdown from 'react-markdown';
+import { Link } from 'react-router-dom';
 
 const ASSISTANT_OPTIONS = {
   initialPrompts: [
@@ -108,11 +110,46 @@ function App() {
         ])
         setInput("")
       })
+      .catch(error => {
+        const isInvalidApiKey = error?.errorDetails?.find((errorDetail: { reason: string; }) => errorDetail?.reason === "API_KEY_INVALID")
+        if (isInvalidApiKey) {
+          notifications.show({
+            id: "apiKey",
+            position: "top-right",
+            color: 'red',
+            title: "Error",
+            message: "Your API key is invalid",
+            autoClose: 5000
+          })
+          return
+        }
+
+        const isBadGateway = error.status === 503
+        if (isBadGateway) {
+          notifications.show({
+            color: 'red',
+            title: "Error (Bad gateway)",
+            message: "Try making your request again in a few seconds."
+          })
+          return
+        }
+
+        notifications.show({
+          color: 'red',
+          title: "Error",
+          message: "An unknown error occurred."
+        })
+      })
   }, [pendingPrompt, assistant])
 
   return (
     <div className='m-4'>
       <Title order={1} size="md">AI Spanish Helper</Title>
+      <NavLink
+        label="Settings"
+        leftSection={"⚙️"}
+        renderRoot={props => <Link to="settings" {...props} />}
+      />
       <Transition
         mounted={conversation.length > 0}
         transition={contextMenuMessage ? undefined : "scale-y"}
@@ -176,6 +213,7 @@ function App() {
           value={input}
           placeholder={`Ask something${conversation.length > 0 ? " else" : ""}...`}
           disabled={!assistant}
+          autoFocus
         />
         <div className='relative mt-2'>
           <Button disabled={!assistant}>

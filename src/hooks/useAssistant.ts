@@ -1,5 +1,5 @@
 import { ChatSession, Content, GoogleGenerativeAI, HarmBlockThreshold, HarmCategory, SafetySetting } from "@google/generative-ai";
-const GEMINI_API_KEY = "AIzaSyAZhQXKuWg1RYRG_YwTbxsWtJPam4AiFP4"
+import useGeminiApiKey from "./useGeminiApiKey";
 
 const safetySettings: SafetySetting[] = [
     {
@@ -22,10 +22,13 @@ const safetySettings: SafetySetting[] = [
 
 
 export function useAssistant({ initialPrompts }: { initialPrompts: Content[] }) {
+    const [apiKey] = useGeminiApiKey()
     const [chatSession, setChatSession] = useState<ChatSession>()
 
     useEffect(() => {
-        const genAI = new GoogleGenerativeAI(GEMINI_API_KEY)
+        if (!apiKey) return
+
+        const genAI = new GoogleGenerativeAI(apiKey)
         const model = genAI.getGenerativeModel({
             safetySettings,
             model: "gemini-1.5-flash",
@@ -33,15 +36,16 @@ export function useAssistant({ initialPrompts }: { initialPrompts: Content[] }) 
                 "You are a spanish tutor. You explain words concisely without exposition",
         })
         setChatSession(model.startChat({ history: initialPrompts }))
-    }, [initialPrompts])
+    }, [apiKey, initialPrompts])
 
 
-    const assistant = {
-        prompt: useCallback(async (prompt: string) => {
+    const assistant = useMemo(() => ({
+        prompt: async (prompt: string) => {
+            if (!apiKey) throw { errorDetails: [{ reason: "API_KEY_INVALID" }] }
             const result = await chatSession?.sendMessage(prompt)
             return result?.response.text()
-        }, [chatSession])
-    };
+        }
+    }), [chatSession]);
 
     return {
         assistant,

@@ -21,11 +21,14 @@
     "@google/generative-ai": "^0.21.0",
     "@mantine/core": "^7.13.2",
     "@mantine/hooks": "^7.13.2",
+    "@mantine/notifications": "^7.14.0",
     "@types/dom-chromium-ai": "^0.0.2",
     "classnames": "^2.5.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "react-markdown": "^9.0.1",
+    "react-router-dom": "^6.28.0",
+    "use-local-storage-state": "^19.5.0",
     "webext-bridge": "^6.0.1"
   },
   "devDependencies": {
