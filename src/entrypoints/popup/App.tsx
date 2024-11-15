@@ -126,12 +126,22 @@ function App() {
           return
         }
 
-        const isBadGateway = error.status === 503
+        const isBadGateway = error?.status === 503
         if (isBadGateway) {
           notifications.show({
             color: 'red',
             title: "Error (Bad gateway)",
             message: "Try making your request again in a few seconds."
+          })
+          return
+        }
+
+        const isNanoUnsupported = error === "NANO_UNSUPPORTED"
+        if (isNanoUnsupported) {
+          notifications.show({
+            color: 'red',
+            title: "Chrome built-in AI not available",
+            message: "This feature is in early preview and can only be used in Canary or Dev releases."
           })
           return
         }

@@ -78,6 +78,7 @@ function useGeminiNanoAssistant({ initialPrompts }: { initialPrompts: Content[] 
 
     const assistant = useMemo(() => ({
         prompt: async (input: string) => {
+            if (!window["ai"]) throw "NANO_UNSUPPORTED"
             if (!languageModel) return
             const response = await languageModel.prompt(input)
             return response
