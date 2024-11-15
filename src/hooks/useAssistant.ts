@@ -1,6 +1,13 @@
 import { ChatSession, Content, GoogleGenerativeAI, HarmBlockThreshold, HarmCategory, SafetySetting } from "@google/generative-ai";
 import useGeminiApiKey from "./useGeminiApiKey";
 import usePreferredModel, { Model } from "./usePreferredModel";
+import { useOllamaURL, useOllamaModel } from "./useOllamaPreferences";
+
+type Assistant = {
+    prompt: (input:string) => Promise<{ content: string, resolvedModel: Model } | undefined>
+}
+
+type UseAssistantHook = ({ initialPrompts }: { initialPrompts: Content[] }) => Assistant
 
 const safetySettings: SafetySetting[] = [
     {
@@ -22,41 +29,42 @@ const safetySettings: SafetySetting[] = [
 ];
 
 
-export function useAssistant({ initialPrompts }: { initialPrompts: Content[] }) {
+export const useAssistant: UseAssistantHook = function ({ initialPrompts }) {
     const [preferredModel] = usePreferredModel()
     
     const nanoAssistant = useGeminiNanoAssistant({ initialPrompts })
     const geminiFlashAssistant = useGeminiFlashAssistant({ initialPrompts })
+    const tinyLlamaAssistant = useOllamaAssistant({ initialPrompts })
 
-    const assistant = useMemo(() => ({
+    const assistant: Assistant = useMemo(() => ({
         prompt: async (input: string): Promise<{ content: string, resolvedModel: Model }> => {
+            if (preferredModel === "tinyllama") {
+                const response = await tinyLlamaAssistant.prompt(input)
+                if (response?.content) {
+                    return response
+                }
+            }
             if (preferredModel === "gemini-1.5-flash") {
                 try {
-                    const content = await geminiFlashAssistant.prompt(input)
-                    if (!content) throw new Error("Empty response from gemini flash model")
-                    return {
-                        content,
-                        resolvedModel: "gemini-1.5-flash"
-                    }
+                    const response = await geminiFlashAssistant.prompt(input)
+                    if (!response?.content) throw new Error("Empty response from gemini flash model")
+                    return response
                 } catch (e) {
                     console.warn("Failed to get a response from Gemini Flash:", e)
                 }
             }
-            const content = await nanoAssistant.prompt(input)
+            const response = await nanoAssistant.prompt(input)
 
-            if (!content) throw new Error("Failed to get model output")
+            if (!response?.content) throw new Error("Failed to get model output")
 
-            return {
-                content,
-                resolvedModel: "nano"
-            }
+            return response
         }
     }), [preferredModel, geminiFlashAssistant, nanoAssistant])
 
     return assistant
 }
 
-function useGeminiNanoAssistant({ initialPrompts }: { initialPrompts: Content[] }) {
+const useGeminiNanoAssistant: UseAssistantHook = function ({ initialPrompts }) {
 
     const [languageModel, setLanguageModel] = useState<AILanguageModel>()
 
@@ -76,12 +84,15 @@ function useGeminiNanoAssistant({ initialPrompts }: { initialPrompts: Content[] 
     }, [initialPrompts])
 
 
-    const assistant = useMemo(() => ({
+    const assistant: Assistant = useMemo(() => ({
         prompt: async (input: string) => {
             if (!window["ai"]) throw "NANO_UNSUPPORTED"
             if (!languageModel) return
             const response = await languageModel.prompt(input)
-            return response
+            return {
+                content: response,
+                resolvedModel: "nano"
+            }
 
         }
     }), [initialPrompts, languageModel]);
@@ -89,7 +100,7 @@ function useGeminiNanoAssistant({ initialPrompts }: { initialPrompts: Content[] 
     return assistant
 }
 
-function useGeminiFlashAssistant({ initialPrompts }: { initialPrompts: Content[] }) {
+const useGeminiFlashAssistant: UseAssistantHook = function ({ initialPrompts }) {
     const [apiKey] = useGeminiApiKey()
     const [chatSession, setChatSession] = useState<ChatSession>()
 
@@ -106,13 +117,72 @@ function useGeminiFlashAssistant({ initialPrompts }: { initialPrompts: Content[]
         setChatSession(model.startChat({ history: initialPrompts }))
     }, [apiKey, initialPrompts])
 
-    const assistant = useMemo(() => ({
+    const assistant: Assistant = useMemo(() => ({
         prompt: async (input: string) => {
             if (!apiKey) throw { errorDetails: [{ reason: "API_KEY_INVALID" }] }
             const result = await chatSession?.sendMessage(input)
-            return result?.response.text()
+            const content = result?.response.text()
+            if (!content) throw "empty response"
+            return {
+                content,
+                resolvedModel: "gemini-1.5-flash"
+            }
         }
     }), [chatSession]);
+
+    return assistant
+}
+
+const useOllamaAssistant: UseAssistantHook = function ({ initialPrompts }) {
+    const [url] = useOllamaURL()
+    const [ollamaModel] = useOllamaModel()
+
+    const assistant: Assistant = useMemo(() => ({
+        prompt: async (input: string) => {
+            if (!url) return
+
+            const formattedInitialPrompts = initialPrompts
+                .map(({ role, parts }) => ({
+                    role: role === "model" ? "assistant" : "user",
+                    content: parts.map(({ text }) => text).join("\n")
+                }))
+
+            const messages = [
+                ...formattedInitialPrompts,
+                {
+                    role: "user",
+                    content: input
+                }
+            ]
+            const reqBody = {
+                messages,
+                model: ollamaModel,
+                stream: false,
+                system: "You are a spanish tutor. You provide short explanations of words, their definitions, and conjugations. Do not give examples in your responses."
+            }
+
+            console.log(reqBody)
+
+            const content = await fetch(url, {
+                method: "POST",
+                body: JSON.stringify(reqBody),
+                headers: {
+                    "Content-Type": "application/json"
+                }
+            })
+                .then((response) => {
+                    if (response.status !== 404) return response
+                    throw "MODEL_NOT_FOUND"
+                })
+                .then(response => response.json())
+                .then(({ message: { content } }) => content)
+
+            return {
+                content,
+                resolvedModel: "tinyllama"
+            }
+        }
+    }), [initialPrompts, url, ollamaModel])
 
     return assistant
 }

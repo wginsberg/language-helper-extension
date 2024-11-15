@@ -146,6 +146,16 @@ function App() {
           return
         }
 
+        const isModelNotFound = error = "MODEL_NOT_FOUND"
+        if (isModelNotFound) {
+          notifications.show({
+            color: 'red',
+            title: "Model not found",
+            message: "The selected model could not be found"
+          })
+          return
+        }
+
         console.warn("Unknown error:", error)
 
         notifications.show({
