@@ -60,7 +60,7 @@ function Settings() {
             <Space h={8} />
             <TextInput
                 label="Ollama URL"
-                placeholder="http://localhost:11434/api/chat"
+                placeholder="http://localhost:11434"
                 onChange={e => {
                     const newValue = e.target.value
                     if (newValue === ollamaURL) return

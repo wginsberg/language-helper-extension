@@ -2,6 +2,7 @@ import { ChatSession, Content, GoogleGenerativeAI, HarmBlockThreshold, HarmCateg
 import useGeminiApiKey from "./useGeminiApiKey";
 import usePreferredModel, { Model } from "./usePreferredModel";
 import { useOllamaURL, useOllamaModel } from "./useOllamaPreferences";
+import { Ollama } from "ollama"
 
 type Assistant = {
     prompt: (input:string) =>Promise<
@@ -183,18 +184,20 @@ const useGeminiFlashAssistant: UseAssistantHook = function ({ initialPrompts }) 
     return assistant
 }
 
+
+// TODO - maintain sessions
 const useOllamaAssistant: UseAssistantHook = function ({ initialPrompts }) {
     const [url] = useOllamaURL()
     const [ollamaModel] = useOllamaModel()
 
     const assistant: Assistant = useMemo(() => ({
         prompt: async (input: string) => {
-            if (!url) {
+            if (!ollamaModel) {
                 return {
                     success: false,
                     error: {
-                        friendlyErrorTitle: "Bad URL",
-                        friendlyErrorDescription: "Missing URL for Ollama model"
+                        friendlyErrorTitle: "Bad model",
+                        friendlyErrorDescription: "Missing model for Ollama"
                     }
                 }
             }
@@ -212,55 +215,46 @@ const useOllamaAssistant: UseAssistantHook = function ({ initialPrompts }) {
                     content: input
                 }
             ]
-            const reqBody = {
+
+            // TODO - add system message
+            const ollama = new Ollama({ host: url })
+            let error: AssistantError | undefined = undefined
+            const result = await ollama.chat({
                 messages,
                 model: ollamaModel,
                 stream: false,
-                system: "You are a spanish tutor. You provide short explanations of words, their definitions, and conjugations. Do not give examples in your responses."
-            }
-
-            // lol
-            let error: AssistantError | undefined = undefined
-            const content = await fetch(url, {
-                method: "POST",
-                body: JSON.stringify(reqBody),
-                headers: {
-                    "Content-Type": "application/json"
+            }).catch(e => {
+                if (e?.status_code === 404) {
+                    error = {
+                        friendlyErrorTitle: "Not found (404)",
+                        friendlyErrorDescription: "Unable to get response from Ollama"
+                    }
                 }
             })
-                .then((response) => {
-                    console.log(response.status)
-                    if (response.status === 400) {
-                        error = {
-                            friendlyErrorTitle: "Unexpected error (400)",
-                            friendlyErrorDescription: `Unable to complete the request to the Ollama server`
-                        }
-                    }
-                    if (response.status === 404) {
-                        error = {
-                            friendlyErrorTitle: "Model not found (404)",
-                            friendlyErrorDescription: `No model "${ollamaModel}" called is available`
-                        }
-                    }
-                    return { response }
 
-                })
-                .then(({ response }) => response?.json())
-                .then(json => json?.message?.content)
-                .catch(() => {
-                    error = {
+            if (error) {
+                return {
+                    success: false,
+                    error
+                }
+            }
+
+            const content = result?.message?.content
+            if (!content) {
+                return {
+                    success: false,
+                    error: {
                         friendlyErrorTitle: "Unexpected error",
-                        friendlyErrorDescription: `Failed to fetch from Ollama server at address "${url}"`
+                        friendlyErrorDescription: "Unable to get response from Ollama"
                     }
-                })
-
-            if (error) return { success: false, error }
+                }
+            }
 
             return {
                 success: true,
                 response: {
                     content,
-                    resolvedModel: "tinyllama" as Model
+                    resolvedModel: ollamaModel as Model
                 }
             }
         }
