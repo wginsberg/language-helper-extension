@@ -59,7 +59,7 @@ function Settings() {
             />
             <Space h={8} />
             <TextInput
-                label="Ollama URL (optional)"
+                label="Ollama URL"
                 placeholder="http://localhost:11434/api/chat"
                 onChange={e => {
                     const newValue = e.target.value
@@ -70,7 +70,7 @@ function Settings() {
             />
             <Space h={8} />
             <TextInput
-                label="Ollama Model (optional)"
+                label="Ollama Model"
                 placeholder="tinyllama"
                 onChange={e => {
                     const newValue = e.target.value
