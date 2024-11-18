@@ -35,7 +35,7 @@ function Settings() {
                 renderRoot={props => <Link to="/" {...props} />}
             />
             <Select
-                label="Preferred model"
+                label="Model"
                 defaultValue={preferredModel}
                 data={availableModels}
 

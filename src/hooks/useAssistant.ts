@@ -4,10 +4,19 @@ import usePreferredModel, { Model } from "./usePreferredModel";
 import { useOllamaURL, useOllamaModel } from "./useOllamaPreferences";
 
 type Assistant = {
-    prompt: (input:string) => Promise<{ content: string, resolvedModel: Model } | undefined>
+    prompt: (input:string) =>Promise<
+        { success: true, response: { content: string, resolvedModel: Model } }
+        | { success: false,  error: AssistantError }
+        | undefined
+    >
 }
 
 type UseAssistantHook = ({ initialPrompts }: { initialPrompts: Content[] }) => Assistant
+
+type AssistantError = {
+    friendlyErrorTitle: string
+    friendlyErrorDescription: string
+}
 
 const safetySettings: SafetySetting[] = [
     {
@@ -37,27 +46,15 @@ export const useAssistant: UseAssistantHook = function ({ initialPrompts }) {
     const tinyLlamaAssistant = useOllamaAssistant({ initialPrompts })
 
     const assistant: Assistant = useMemo(() => ({
-        prompt: async (input: string): Promise<{ content: string, resolvedModel: Model }> => {
-            if (preferredModel === "tinyllama") {
-                const response = await tinyLlamaAssistant.prompt(input)
-                if (response?.content) {
-                    return response
-                }
+        prompt: async (input: string) => {
+            switch (preferredModel) {
+               case "tinyllama":
+                    return tinyLlamaAssistant.prompt(input)
+               case "gemini-1.5-flash":
+                    return geminiFlashAssistant.prompt(input)
+                default:
+                    return nanoAssistant.prompt(input)
             }
-            if (preferredModel === "gemini-1.5-flash") {
-                try {
-                    const response = await geminiFlashAssistant.prompt(input)
-                    if (!response?.content) throw new Error("Empty response from gemini flash model")
-                    return response
-                } catch (e) {
-                    console.warn("Failed to get a response from Gemini Flash:", e)
-                }
-            }
-            const response = await nanoAssistant.prompt(input)
-
-            if (!response?.content) throw new Error("Failed to get model output")
-
-            return response
         }
     }), [preferredModel, geminiFlashAssistant, nanoAssistant])
 
@@ -86,14 +83,45 @@ const useGeminiNanoAssistant: UseAssistantHook = function ({ initialPrompts }) {
 
     const assistant: Assistant = useMemo(() => ({
         prompt: async (input: string) => {
-            if (!window["ai"]) throw "NANO_UNSUPPORTED"
-            if (!languageModel) return
-            const response = await languageModel.prompt(input)
-            return {
-                content: response,
-                resolvedModel: "nano"
+            if (!window["ai"]) {
+                return {
+                    success: false,
+                    error: {
+                        friendlyErrorTitle: "Model not supported",
+                        friendlyErrorDescription: "Gemini Nano is not available in this browser"
+                    }
+                }
+            }
+            if (!languageModel) {
+                return {
+                    success: false,
+                    error: {
+                        friendlyErrorTitle: "Unexpected error",
+                        friendlyErrorDescription: "Gemini Nano is not initialized"
+                    }
+                }
             }
 
+            const response = await languageModel.prompt(input)
+                .catch(() => undefined)
+
+            if (!response) {
+                return {
+                    success: false,
+                    error: {
+                        friendlyErrorTitle: "Unexpected error",
+                        friendlyErrorDescription: "Failed to get a response from Gemini Nano"
+                    }
+                }
+            }
+
+            return {
+                success: true,
+                response: {
+                    content: response,
+                    resolvedModel: "nano" as Model
+                }
+            }
         }
     }), [initialPrompts, languageModel]);
 
@@ -119,13 +147,35 @@ const useGeminiFlashAssistant: UseAssistantHook = function ({ initialPrompts }) 
 
     const assistant: Assistant = useMemo(() => ({
         prompt: async (input: string) => {
-            if (!apiKey) throw { errorDetails: [{ reason: "API_KEY_INVALID" }] }
+            if (!apiKey) {
+                return {
+                    success: false,
+                    error: {
+                        friendlyErrorTitle: "Bad API Key",
+                        friendlyErrorDescription: "Missing API Key for Gemini Flash"
+                    }
+                }
+            }
+
             const result = await chatSession?.sendMessage(input)
+                .catch(() => undefined)
+
             const content = result?.response.text()
-            if (!content) throw "empty response"
+            if (!content) {
+                return {
+                    success: false,
+                    error: {
+                        friendlyErrorTitle: "Unexpected Error",
+                        friendlyErrorDescription: "Empty response from Gemini Flash"
+                    }
+                }
+            }
             return {
-                content,
-                resolvedModel: "gemini-1.5-flash"
+                success: true,
+                response: {
+                    content,
+                    resolvedModel: "gemini-1.5-flash"
+                }
             }
         }
     }), [chatSession]);
@@ -139,7 +189,15 @@ const useOllamaAssistant: UseAssistantHook = function ({ initialPrompts }) {
 
     const assistant: Assistant = useMemo(() => ({
         prompt: async (input: string) => {
-            if (!url) return
+            if (!url) {
+                return {
+                    success: false,
+                    error: {
+                        friendlyErrorTitle: "Bad URL",
+                        friendlyErrorDescription: "Missing URL for Ollama model"
+                    }
+                }
+            }
 
             const formattedInitialPrompts = initialPrompts
                 .map(({ role, parts }) => ({
@@ -161,8 +219,8 @@ const useOllamaAssistant: UseAssistantHook = function ({ initialPrompts }) {
                 system: "You are a spanish tutor. You provide short explanations of words, their definitions, and conjugations. Do not give examples in your responses."
             }
 
-            console.log(reqBody)
-
+            // lol
+            let error: AssistantError | undefined = undefined
             const content = await fetch(url, {
                 method: "POST",
                 body: JSON.stringify(reqBody),
@@ -171,15 +229,39 @@ const useOllamaAssistant: UseAssistantHook = function ({ initialPrompts }) {
                 }
             })
                 .then((response) => {
-                    if (response.status !== 404) return response
-                    throw "MODEL_NOT_FOUND"
+                    console.log(response.status)
+                    if (response.status === 400) {
+                        error = {
+                            friendlyErrorTitle: "Unexpected error (400)",
+                            friendlyErrorDescription: `Unable to complete the request to the Ollama server`
+                        }
+                    }
+                    if (response.status === 404) {
+                        error = {
+                            friendlyErrorTitle: "Model not found (404)",
+                            friendlyErrorDescription: `No model "${ollamaModel}" called is available`
+                        }
+                    }
+                    return { response }
+
                 })
-                .then(response => response.json())
-                .then(({ message: { content } }) => content)
+                .then(({ response }) => response?.json())
+                .then(json => json?.message?.content)
+                .catch(() => {
+                    error = {
+                        friendlyErrorTitle: "Unexpected error",
+                        friendlyErrorDescription: `Failed to fetch from Ollama server at address "${url}"`
+                    }
+                })
+
+            if (error) return { success: false, error }
 
             return {
-                content,
-                resolvedModel: "tinyllama"
+                success: true,
+                response: {
+                    content,
+                    resolvedModel: "tinyllama" as Model
+                }
             }
         }
     }), [initialPrompts, url, ollamaModel])
