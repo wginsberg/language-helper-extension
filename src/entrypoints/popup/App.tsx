@@ -90,18 +90,20 @@ function App() {
 
   // AI prompt
   useEffect(() => {
-    if (!pendingPrompt) return
-    if (!assistant) return
+    const inner = async () => {
+      if (!pendingPrompt) return
+      if (!assistant) return
 
-    setConversation(prev => [...prev, { role: "user", content: pendingPrompt.prompt, shortContent: pendingPrompt.shortPrompt, isPending: false, id: Date.now() }])
-    setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, id: Date.now() }])
+      setConversation(prev => [...prev, { role: "user", content: pendingPrompt.prompt, shortContent: pendingPrompt.shortPrompt, isPending: false, id: Date.now() }])
+      setConversation(prev => [...prev, { role: "assistant", content: "", isPending: true, id: Date.now() }])
 
-    setPendingPrompt(undefined)
+      setPendingPrompt(undefined)
 
-    // TODO streaming
-    assistant.prompt(pendingPrompt.prompt)
-      .then(result => {
-        if (result === undefined) {
+      let id = -1
+
+      for await (const part of assistant.prompt(pendingPrompt.prompt)) {
+
+        if (!part) {
           notifications.show({
             color: 'red',
             title: "'Unexpected Error",
@@ -110,27 +112,43 @@ function App() {
           setConversation(prev => prev.filter(message => !message.isPending))
           return
         }
-        if (!result.success) {
+
+        if (!part.success) {
           notifications.show({
             color: 'red',
-            title: result.error.friendlyErrorTitle,
-            message: result.error.friendlyErrorDescription
+            title: part.error.friendlyErrorTitle,
+            message: part.error.friendlyErrorDescription
           })
           setConversation(prev => prev.filter(message => !message.isPending))
           return
         }
-        setConversation(prev => [
-          ...prev.filter(message => !message.isPending),
-          {
-            role: "assistant",
-            content: result.response.resolvedModel,
-            shortContent: result.response.content,
-            id: Date.now()
-          }
-        ])
-        setInput("")
-      })
-  }, [pendingPrompt, assistant])
+
+        if (id === -1) {
+          id = Date.now()
+          setConversation(prev => [
+            ...prev.filter(message => !message.isPending),
+            {
+              role: "assistant",
+              content: part.response.resolvedModel,
+              shortContent: part.response.content,
+              id
+            }
+          ])
+        } else {
+          setConversation(prev => prev.map(message => {
+            if (message.id !== id) return message
+            return {
+              ...message,
+              shortContent: message.shortContent + part.response.content
+            }
+          }))
+        }
+      }
+      setInput("")
+    }
+    inner()
+  }
+    , [pendingPrompt, assistant])
 
   return (
     <div className='m-4'>

@@ -1,11 +1,11 @@
-import { ChatSession, Content, GoogleGenerativeAI, HarmBlockThreshold, HarmCategory, SafetySetting } from "@google/generative-ai";
+import { ChatSession, Content, GenerateContentStreamResult, GoogleGenerativeAI, HarmBlockThreshold, HarmCategory, SafetySetting } from "@google/generative-ai";
 import useGeminiApiKey from "./useGeminiApiKey";
 import usePreferredModel, { Model } from "./usePreferredModel";
 import { useOllamaURL, useOllamaModel } from "./useOllamaPreferences";
 import { Ollama } from "ollama"
 
 type Assistant = {
-    prompt: (input:string) =>Promise<
+    prompt: (input:string) => AsyncGenerator<
         { success: true, response: { content: string, resolvedModel: Model } }
         | { success: false,  error: AssistantError }
         | undefined
@@ -47,14 +47,24 @@ export const useAssistant: UseAssistantHook = function ({ initialPrompts }) {
     const tinyLlamaAssistant = useOllamaAssistant({ initialPrompts })
 
     const assistant: Assistant = useMemo(() => ({
-        prompt: async (input: string) => {
+        prompt: async function * (input: string) {
+            let assistant: Assistant
             switch (preferredModel) {
                case "tinyllama":
-                    return tinyLlamaAssistant.prompt(input)
+                    assistant = tinyLlamaAssistant
+                    break
+                    // return tinyLlamaAssistant.prompt(input)
                case "gemini-1.5-flash":
+                    assistant = geminiFlashAssistant
+                    break
                     return geminiFlashAssistant.prompt(input)
-                default:
-                    return nanoAssistant.prompt(input)
+               default:
+                    assistant = nanoAssistant
+                    break
+                    // return nanoAssistant.prompt(input)
+            }
+            for await (const part of assistant.prompt(input)) {
+                yield part
             }
         }
     }), [preferredModel, geminiFlashAssistant, nanoAssistant])
@@ -83,7 +93,7 @@ const useGeminiNanoAssistant: UseAssistantHook = function ({ initialPrompts }) {
 
 
     const assistant: Assistant = useMemo(() => ({
-        prompt: async (input: string) => {
+        prompt: async function * (input: string) {
             if (!window["ai"]) {
                 return {
                     success: false,
@@ -103,26 +113,39 @@ const useGeminiNanoAssistant: UseAssistantHook = function ({ initialPrompts }) {
                 }
             }
 
-            const response = await languageModel.prompt(input)
-                .catch(() => undefined)
+            let error: AssistantError | undefined = undefined
+            let result: ReadableStream<string> | undefined = undefined
 
-            if (!response) {
+            try {
+                result = await languageModel.promptStreaming(input)
+            } catch {
+                error = {
+                    friendlyErrorTitle: "Unexpected Error",
+                    friendlyErrorDescription: "Empty response from Gemini Flash"
+                }
+            }
+
+            if (!result || error) {
                 return {
                     success: false,
-                    error: {
-                        friendlyErrorTitle: "Unexpected error",
-                        friendlyErrorDescription: "Failed to get a response from Gemini Nano"
+                    error
+                }
+            }
+
+
+            let count = 0
+            for await (const part of result) {
+                const chunk = part.slice(count)
+                count += chunk.length
+                yield {
+                    success: true,
+                    response: {
+                        content: chunk,
+                        resolvedModel: "nano" as Model
                     }
                 }
             }
 
-            return {
-                success: true,
-                response: {
-                    content: response,
-                    resolvedModel: "nano" as Model
-                }
-            }
         }
     }), [initialPrompts, languageModel]);
 
@@ -147,7 +170,7 @@ const useGeminiFlashAssistant: UseAssistantHook = function ({ initialPrompts }) 
     }, [apiKey, initialPrompts])
 
     const assistant: Assistant = useMemo(() => ({
-        prompt: async (input: string) => {
+        prompt: async function * (input: string) {
             if (!apiKey) {
                 return {
                     success: false,
@@ -158,26 +181,32 @@ const useGeminiFlashAssistant: UseAssistantHook = function ({ initialPrompts }) 
                 }
             }
 
-            const result = await chatSession?.sendMessage(input)
-                .catch(() => undefined)
+            let error: AssistantError | undefined = undefined
+            let result: GenerateContentStreamResult | undefined = undefined
+            try {
+                result = await chatSession?.sendMessageStream(input)
+            } catch {
+                error = {
+                    friendlyErrorTitle: "Unexpected Error",
+                    friendlyErrorDescription: "Empty response from Gemini Flash"
+                }
+            }
 
-            const content = result?.response.text()
-            if (!content) {
-                return {
-                    success: false,
-                    error: {
-                        friendlyErrorTitle: "Unexpected Error",
-                        friendlyErrorDescription: "Empty response from Gemini Flash"
+            if (error || !result) return {
+                success: false,
+                error
+            }
+
+            for await (const part of result.stream) {
+                yield {
+                    success: true,
+                    response: {
+                        content: part?.text(),
+                        resolvedModel: "gemini-1.5-flash"
                     }
                 }
             }
-            return {
-                success: true,
-                response: {
-                    content,
-                    resolvedModel: "gemini-1.5-flash"
-                }
-            }
+
         }
     }), [chatSession]);
 
@@ -191,7 +220,7 @@ const useOllamaAssistant: UseAssistantHook = function ({ initialPrompts }) {
     const [ollamaModel] = useOllamaModel()
 
     const assistant: Assistant = useMemo(() => ({
-        prompt: async (input: string) => {
+        prompt: async function * (input: string) {
             if (!ollamaModel) {
                 return {
                     success: false,
@@ -222,7 +251,7 @@ const useOllamaAssistant: UseAssistantHook = function ({ initialPrompts }) {
             const result = await ollama.chat({
                 messages,
                 model: ollamaModel,
-                stream: false,
+                stream: true,
             }).catch(e => {
                 if (e?.status_code === 404) {
                     error = {
@@ -239,8 +268,7 @@ const useOllamaAssistant: UseAssistantHook = function ({ initialPrompts }) {
                 }
             }
 
-            const content = result?.message?.content
-            if (!content) {
+            if (!result) {
                 return {
                     success: false,
                     error: {
@@ -250,11 +278,13 @@ const useOllamaAssistant: UseAssistantHook = function ({ initialPrompts }) {
                 }
             }
 
-            return {
-                success: true,
-                response: {
-                    content,
-                    resolvedModel: ollamaModel as Model
+            for await (const part of result) {
+                yield {
+                    success: true,
+                    response: {
+                        content: part.message.content,
+                        resolvedModel: ollamaModel as Model
+                    }
                 }
             }
         }
