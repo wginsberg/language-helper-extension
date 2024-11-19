@@ -84,7 +84,9 @@ const useGeminiNanoAssistant: UseAssistantHook = function ({ systemPrompt, initi
             console.log(systemPrompt)
             window.ai.languageModel.create({
                 systemPrompt,
-                initialPrompts: formattedInitialPrompts
+                initialPrompts: formattedInitialPrompts,
+                temperature: 0.01,
+                topK: 1
             })
                 .then(lm => setLanguageModel(lm))
         } catch (error) {
