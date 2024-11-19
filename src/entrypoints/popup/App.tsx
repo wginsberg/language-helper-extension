@@ -227,7 +227,7 @@ function App() {
                       <Paper
                         withBorder
                         p="xs"
-                        bg={message.role === "user" ? "cyan" : ""}
+                        bg={message.role === "user" ? "#057be261" : ""}
                       >
                         <Markdown>
                           {message.shortContent || message.content}
