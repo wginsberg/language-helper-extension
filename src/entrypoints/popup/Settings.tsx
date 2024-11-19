@@ -1,7 +1,8 @@
 import useGeminiApiKey from "@/hooks/useGeminiApiKey"
 import { useOllamaURL, useOllamaModel } from "@/hooks/useOllamaPreferences"
+import usePreferredInputLanguage, { InputLanguage } from "@/hooks/usePreferredInputLanguage"
 import usePreferredModel, { Model } from "@/hooks/usePreferredModel"
-import { Title, NavLink, PasswordInput, Select, TextInput, Space } from "@mantine/core"
+import { Title, NavLink, PasswordInput, Select, TextInput, Space, Divider } from "@mantine/core"
 import { Link } from "react-router-dom"
 
 function Settings() {
@@ -9,7 +10,7 @@ function Settings() {
     const [preferredModel, setPreferredModel] = usePreferredModel()
     const [ollamaURL, setOllamaURL] = useOllamaURL()
     const [ollamaModel, setOllamaModel] = useOllamaModel()
-
+    const [inputLanguage, setInputLanguage] = usePreferredInputLanguage()
 
     const availableModels: { label: string, value: Model }[] = [
         {
@@ -26,6 +27,17 @@ function Settings() {
         },
     ]
 
+    const availableLanguages: { label: string, value: InputLanguage }[] = [
+        {
+            value: "en",
+            label: "English"
+        },
+        {
+            value: "es",
+            label: "Spanish"
+        }
+    ]
+
     return (
         <div className='m-4'>
             <Title order={1} size="md">AI Spanish Helper | Settings</Title>
@@ -34,6 +46,18 @@ function Settings() {
                 leftSection={"🏡"}
                 renderRoot={props => <Link to="/" {...props} />}
             />
+            <Select
+                label="Input Language"
+                defaultValue={inputLanguage}
+                data={availableLanguages}
+
+                onChange={e => {
+                    if (e === inputLanguage) return
+                    setInputLanguage(e as InputLanguage)
+                }}
+            />
+            <Space h={8} />
+            <Divider my="md" />
             <Select
                 label="Model"
                 defaultValue={preferredModel}

@@ -8,7 +8,31 @@ import Ellipses from '@/components/ellipses';
 import Markdown from 'react-markdown';
 import { Link } from 'react-router-dom';
 
-const ASSISTANT_OPTIONS = {
+
+const ASSISTANT_OPTIONS_EN = {
+  systemPrompt: "You provide definitions and explanations of English words. You may be given a sentence to use for context but do not comment on it.",
+  initialPrompts: [
+    {
+      role: "user",
+      parts: [{ text: `distribution` }]
+    },
+    {
+      role: "model",
+      parts: [{ text: `**distribution (distribute)**: The act of sharing or spreading something. _Noun form of distribute._` }]
+    },
+    {
+      role: "user",
+      parts: [{ text: `scolding in the context "My boss hadn't yet finished scolding me"` }]
+    },
+    {
+      role: "model",
+      parts: [{ text: `**scolding (scold)**: The act of reprimanding or criticizing someone angrily. _Gerund or present participle of scold._` }]
+    },
+  ]
+}
+
+const ASSISTANT_OPTIONS_ES = {
+  systemPrompt: "You provide definitions and explanations of Spanish words. You may be given a sentence to use for context but do not comment on it.",
   initialPrompts: [
     {
       role: "user",
@@ -45,6 +69,11 @@ const ASSISTANT_OPTIONS = {
   ]
 }
 
+const ASSISTANT_OPTIONS = {
+  "en": ASSISTANT_OPTIONS_EN,
+  "es": ASSISTANT_OPTIONS_ES
+}
+
 type ChatMessage = AILanguageModelPrompt & {
   id: number
   isPending?: boolean
@@ -53,7 +82,8 @@ type ChatMessage = AILanguageModelPrompt & {
 
 
 function App() {
-  const assistant = useAssistant(ASSISTANT_OPTIONS)
+  const [inputLanguage] = usePreferredInputLanguage()
+  const assistant = useAssistant(ASSISTANT_OPTIONS[inputLanguage])
   const contextMenuMessage = useMessage("chrome-ai-context-menu")
   const [input, setInput] = useState("")
   const [conversation, setConversation] = useState<(ChatMessage)[]>([])

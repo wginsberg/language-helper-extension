@@ -12,7 +12,7 @@ type Assistant = {
     >
 }
 
-type UseAssistantHook = ({ initialPrompts }: { initialPrompts: Content[] }) => Assistant
+type UseAssistantHook = ({ systemPrompt, initialPrompts }: { systemPrompt: string,  initialPrompts: Content[] }) => Assistant
 
 type AssistantError = {
     friendlyErrorTitle: string
@@ -39,12 +39,12 @@ const safetySettings: SafetySetting[] = [
 ];
 
 
-export const useAssistant: UseAssistantHook = function ({ initialPrompts }) {
+export const useAssistant: UseAssistantHook = function ({ systemPrompt, initialPrompts }) {
     const [preferredModel] = usePreferredModel()
     
-    const nanoAssistant = useGeminiNanoAssistant({ initialPrompts })
-    const geminiFlashAssistant = useGeminiFlashAssistant({ initialPrompts })
-    const tinyLlamaAssistant = useOllamaAssistant({ initialPrompts })
+    const nanoAssistant = useGeminiNanoAssistant({ systemPrompt, initialPrompts })
+    const geminiFlashAssistant = useGeminiFlashAssistant({ systemPrompt, initialPrompts })
+    const tinyLlamaAssistant = useOllamaAssistant({ systemPrompt, initialPrompts })
 
     const assistant: Assistant = useMemo(() => ({
         prompt: async function * (input: string) {
@@ -53,15 +53,12 @@ export const useAssistant: UseAssistantHook = function ({ initialPrompts }) {
                case "tinyllama":
                     assistant = tinyLlamaAssistant
                     break
-                    // return tinyLlamaAssistant.prompt(input)
                case "gemini-1.5-flash":
                     assistant = geminiFlashAssistant
                     break
-                    return geminiFlashAssistant.prompt(input)
                default:
                     assistant = nanoAssistant
                     break
-                    // return nanoAssistant.prompt(input)
             }
             for await (const part of assistant.prompt(input)) {
                 yield part
@@ -72,7 +69,7 @@ export const useAssistant: UseAssistantHook = function ({ initialPrompts }) {
     return assistant
 }
 
-const useGeminiNanoAssistant: UseAssistantHook = function ({ initialPrompts }) {
+const useGeminiNanoAssistant: UseAssistantHook = function ({ systemPrompt, initialPrompts }) {
 
     const [languageModel, setLanguageModel] = useState<AILanguageModel>()
 
@@ -84,7 +81,11 @@ const useGeminiNanoAssistant: UseAssistantHook = function ({ initialPrompts }) {
             }))
 
         try {
-            window.ai.languageModel.create({ initialPrompts: formattedInitialPrompts })
+            console.log(systemPrompt)
+            window.ai.languageModel.create({
+                systemPrompt,
+                initialPrompts: formattedInitialPrompts
+            })
                 .then(lm => setLanguageModel(lm))
         } catch (error) {
             console.warn("Failed to initialize Gemini Nano:", error)
@@ -152,7 +153,7 @@ const useGeminiNanoAssistant: UseAssistantHook = function ({ initialPrompts }) {
     return assistant
 }
 
-const useGeminiFlashAssistant: UseAssistantHook = function ({ initialPrompts }) {
+const useGeminiFlashAssistant: UseAssistantHook = function ({ systemPrompt, initialPrompts }) {
     const [apiKey] = useGeminiApiKey()
     const [chatSession, setChatSession] = useState<ChatSession>()
 
@@ -163,8 +164,7 @@ const useGeminiFlashAssistant: UseAssistantHook = function ({ initialPrompts }) 
         const model = genAI.getGenerativeModel({
             safetySettings,
             model: "gemini-1.5-flash",
-            systemInstruction:
-                "You are a spanish tutor. You explain words concisely without exposition",
+            systemInstruction: systemPrompt
         })
         setChatSession(model.startChat({ history: initialPrompts }))
     }, [apiKey, initialPrompts])
@@ -184,8 +184,10 @@ const useGeminiFlashAssistant: UseAssistantHook = function ({ initialPrompts }) 
             let error: AssistantError | undefined = undefined
             let result: GenerateContentStreamResult | undefined = undefined
             try {
+                console.log("Making request")
                 result = await chatSession?.sendMessageStream(input)
             } catch {
+                console.log("handled error")
                 error = {
                     friendlyErrorTitle: "Unexpected Error",
                     friendlyErrorDescription: "Empty response from Gemini Flash"
@@ -196,7 +198,7 @@ const useGeminiFlashAssistant: UseAssistantHook = function ({ initialPrompts }) 
                 success: false,
                 error
             }
-
+            console.log("waiting for response...")
             for await (const part of result.stream) {
                 yield {
                     success: true,
