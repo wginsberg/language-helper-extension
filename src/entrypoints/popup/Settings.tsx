@@ -70,6 +70,7 @@ function Settings() {
             />
             <Space h={8} />
             <PasswordInput
+                disabled={preferredModel !== "gemini-1.5-flash"}
                 label="Gemini API Key"
                 placeholder="Paste your API key here"
                 onChange={e => {
@@ -83,6 +84,7 @@ function Settings() {
             />
             <Space h={8} />
             <TextInput
+                disabled={preferredModel !== "tinyllama"}
                 label="Ollama URL"
                 placeholder="http://localhost:11434"
                 onChange={e => {
@@ -94,6 +96,7 @@ function Settings() {
             />
             <Space h={8} />
             <TextInput
+                disabled={preferredModel !== "tinyllama"}
                 label="Ollama Model"
                 placeholder="tinyllama"
                 onChange={e => {
