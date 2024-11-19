@@ -129,8 +129,7 @@ function App() {
             ...prev.filter(message => !message.isPending),
             {
               role: "assistant",
-              content: part.response.resolvedModel,
-              shortContent: part.response.content,
+              content: part.response.content,
               id
             }
           ])
@@ -139,7 +138,7 @@ function App() {
             if (message.id !== id) return message
             return {
               ...message,
-              shortContent: message.shortContent + part.response.content
+              content: message.content + part.response.content
             }
           }))
         }
