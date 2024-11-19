@@ -32,7 +32,7 @@ const ASSISTANT_OPTIONS_EN = {
 }
 
 const ASSISTANT_OPTIONS_ES = {
-  systemPrompt: "You provide definitions and explanations of Spanish words. You may be given a sentence to use for context but do not comment on it.",
+  systemPrompt: "You provide definitions and explanations of Spanish words. You may be given a sentence to use for context but do not comment on it. You only output English explanations.",
   initialPrompts: [
     {
       role: "user",
@@ -181,7 +181,7 @@ function App() {
 
   return (
     <div className='m-4'>
-      <Title order={1} size="md">AI Spanish Helper</Title>
+      <Title order={1} size="md">AI Language Helper</Title>
       <NavLink
         label="Settings"
         leftSection={"⚙️"}

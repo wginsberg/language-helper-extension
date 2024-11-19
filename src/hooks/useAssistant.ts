@@ -96,22 +96,24 @@ const useGeminiNanoAssistant: UseAssistantHook = function ({ systemPrompt, initi
     const assistant: Assistant = useMemo(() => ({
         prompt: async function * (input: string) {
             if (!window["ai"]) {
-                return {
+                yield {
                     success: false,
                     error: {
                         friendlyErrorTitle: "Model not supported",
                         friendlyErrorDescription: "Gemini Nano is not available in this browser"
                     }
                 }
+                return
             }
             if (!languageModel) {
-                return {
+                yield {
                     success: false,
                     error: {
                         friendlyErrorTitle: "Unexpected error",
                         friendlyErrorDescription: "Gemini Nano is not initialized"
                     }
                 }
+                return
             }
 
             let error: AssistantError | undefined = undefined
@@ -127,10 +129,14 @@ const useGeminiNanoAssistant: UseAssistantHook = function ({ systemPrompt, initi
             }
 
             if (!result || error) {
-                return {
+                yield {
                     success: false,
-                    error
+                    error: {
+                        friendlyErrorTitle: "Unexpected Error",
+                        friendlyErrorDescription: "Empty response from Gemini Flash"
+                    }
                 }
+                return
             }
 
 

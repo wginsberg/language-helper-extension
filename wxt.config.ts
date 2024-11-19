@@ -7,6 +7,6 @@ export default defineConfig({
   outDir: "build",
   manifest: {
     permissions: ["contextMenus"],
-    name: "AI Spanish Helper",
+    name: "AI Language Helper",
   },
 });

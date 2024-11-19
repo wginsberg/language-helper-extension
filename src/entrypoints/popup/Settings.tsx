@@ -40,7 +40,7 @@ function Settings() {
 
     return (
         <div className='m-4'>
-            <Title order={1} size="md">AI Spanish Helper | Settings</Title>
+            <Title order={1} size="md">AI Language Helper | Settings</Title>
             <NavLink
                 label="Home"
                 leftSection={"🏡"}
