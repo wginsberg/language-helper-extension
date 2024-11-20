@@ -2,7 +2,7 @@ import { ChatSession, Content, GenerateContentStreamResult, GoogleGenerativeAI, 
 import useGeminiApiKey from "./useGeminiApiKey";
 import usePreferredModel, { Model } from "./usePreferredModel";
 import { useOllamaURL, useOllamaModel } from "./useOllamaPreferences";
-import { Ollama } from "ollama"
+import { Ollama } from "ollama/browser"
 
 type Assistant = {
     prompt: (input:string) => AsyncGenerator<
