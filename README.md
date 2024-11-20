@@ -23,3 +23,13 @@ Features:
 <p align="center">
  <img src="./settings_screenshot.png" width="400" />
 </p>
+
+## Build instructions
+
+To build the extension:
+```
+npm install
+npm run build
+```
+
+Install the extension from `./build/chrome-mv3`
